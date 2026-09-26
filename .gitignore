@@ -1,0 +1,27 @@
+# Python / Flask
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+.env
+instance/
+*.sqlite3
+
+# Flutter / Dart
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/.packages
+app/build/
+app/.idea/
+app/*.iml
+app/android/.gradle/
+app/android/local.properties
+app/ios/Pods/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
