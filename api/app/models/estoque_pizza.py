@@ -11,3 +11,12 @@ class EstoquePizzaCongelada(db.Model):
     data_producao = db.Column(db.Date, default=date.today)
 
     sabor = db.relationship("PizzaSabor", backref="estoques")
+
+    def to_dict(self):
+        return {
+            "id_estoque_pizza": self.id_estoque_pizza,
+            "id_sabor": self.id_sabor,
+            "sabor": self.sabor.nome if self.sabor else None,
+            "quantidade_disponivel": self.quantidade_disponivel,
+            "data_producao": self.data_producao.isoformat() if self.data_producao else None,
+        }

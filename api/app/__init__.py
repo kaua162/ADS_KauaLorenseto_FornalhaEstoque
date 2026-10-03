@@ -25,9 +25,13 @@ def create_app():
 
     from app.routes.auth import auth_bp
     from app.routes.materia_prima import materia_prima_bp
+    from app.routes.pizza_sabor import pizza_sabor_bp
+    from app.routes.estoque_pizza import estoque_pizza_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(materia_prima_bp, url_prefix="/materia-prima")
+    app.register_blueprint(pizza_sabor_bp, url_prefix="/pizza-sabor")
+    app.register_blueprint(estoque_pizza_bp, url_prefix="/estoque-pizza")
 
     @app.get("/")
     def health():

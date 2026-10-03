@@ -8,3 +8,11 @@ class PizzaSabor(db.Model):
     nome = db.Column(db.String(120), unique=True, nullable=False)
     descricao = db.Column(db.String(255))
     preco_unitario = db.Column(db.Numeric(10, 2), nullable=False)
+
+    def to_dict(self):
+        return {
+            "id_sabor": self.id_sabor,
+            "nome": self.nome,
+            "descricao": self.descricao,
+            "preco_unitario": float(self.preco_unitario),
+        }
