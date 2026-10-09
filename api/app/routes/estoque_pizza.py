@@ -1,12 +1,11 @@
 from datetime import date
 
 from flask import Blueprint, request, jsonify
-from sqlalchemy import func
-
 from app.extensions import db
 from app.models.pizza_sabor import PizzaSabor
 from app.models.estoque_pizza import EstoquePizzaCongelada
-from app.services.estoque_pizza import dar_baixa_fifo, EstoqueInsuficiente
+from app.services.estoque_pizza import dar_baixa_fifo, saldo_por_sabor, EstoqueInsuficiente
+from app.utils import hoje_brasilia
 
 estoque_pizza_bp = Blueprint("estoque_pizza", __name__)
 
@@ -26,21 +25,7 @@ def listar():
 @estoque_pizza_bp.get("/resumo")
 def resumo():
     """RF05 - saldo total disponível por sabor"""
-    linhas = (
-        db.session.query(
-            PizzaSabor.id_sabor,
-            PizzaSabor.nome,
-            func.coalesce(func.sum(EstoquePizzaCongelada.quantidade_disponivel), 0),
-        )
-        .outerjoin(EstoquePizzaCongelada, EstoquePizzaCongelada.id_sabor == PizzaSabor.id_sabor)
-        .group_by(PizzaSabor.id_sabor, PizzaSabor.nome)
-        .order_by(PizzaSabor.nome)
-        .all()
-    )
-    return jsonify([
-        {"id_sabor": id_sabor, "sabor": nome, "quantidade_disponivel": int(total)}
-        for id_sabor, nome, total in linhas
-    ]), 200
+    return jsonify(saldo_por_sabor()), 200
 
 
 @estoque_pizza_bp.post("/producao")
@@ -55,7 +40,7 @@ def registrar_producao():
 
     PizzaSabor.query.get_or_404(id_sabor)
 
-    data_producao = date.today()
+    data_producao = hoje_brasilia()
     if dados.get("data_producao"):
         try:
             data_producao = date.fromisoformat(dados["data_producao"])

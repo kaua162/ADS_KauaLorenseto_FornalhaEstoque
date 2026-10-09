@@ -1,7 +1,37 @@
-from datetime import date
+from sqlalchemy import func, and_
 
 from app.extensions import db
 from app.models.estoque_pizza import EstoquePizzaCongelada
+from app.models.pizza_sabor import PizzaSabor
+from app.utils import hoje_brasilia
+
+
+def saldo_por_sabor():
+    """Saldo disponível de cada sabor (inclusive os zerados) e a data do lote mais antigo com saldo."""
+    linhas = (
+        db.session.query(
+            PizzaSabor.id_sabor,
+            PizzaSabor.nome,
+            func.coalesce(func.sum(EstoquePizzaCongelada.quantidade_disponivel), 0),
+            func.min(EstoquePizzaCongelada.data_producao),
+        )
+        .outerjoin(EstoquePizzaCongelada, and_(
+            EstoquePizzaCongelada.id_sabor == PizzaSabor.id_sabor,
+            EstoquePizzaCongelada.quantidade_disponivel > 0,
+        ))
+        .group_by(PizzaSabor.id_sabor, PizzaSabor.nome)
+        .order_by(PizzaSabor.nome)
+        .all()
+    )
+    return [
+        {
+            "id_sabor": id_sabor,
+            "sabor": nome,
+            "quantidade_disponivel": int(total),
+            "data_lote_mais_antigo": lote_antigo.isoformat() if lote_antigo else None,
+        }
+        for id_sabor, nome, total, lote_antigo in linhas
+    ]
 
 
 class EstoqueInsuficiente(Exception):
@@ -44,6 +74,6 @@ def dar_baixa_fifo(id_sabor, quantidade):
 
 def devolver_ao_estoque(id_sabor, quantidade):
     """Devolve pizzas ao estoque como um novo lote com data de hoje. Não faz commit."""
-    lote = EstoquePizzaCongelada(id_sabor=id_sabor, quantidade_disponivel=quantidade, data_producao=date.today())
+    lote = EstoquePizzaCongelada(id_sabor=id_sabor, quantidade_disponivel=quantidade, data_producao=hoje_brasilia())
     db.session.add(lote)
     return lote

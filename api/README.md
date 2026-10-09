@@ -52,6 +52,10 @@ A API sobe em `http://127.0.0.1:5000`.
 | GET    | /pedido-revenda/<id>              | Detalha pedido com itens (RF06 - HU08)                      |
 | POST   | /pedido-revenda                   | Cria pedido e dá baixa no estoque, tudo ou nada (RF06 - HU08) |
 | PUT    | /pedido-revenda/<id>/status       | Atualiza status; cancelar devolve ao estoque (RF06 - HU08)  |
+| GET    | /relatorios/estoque-materia-prima | Estoque de insumos com resumo; filtro `?apenas_criticos=true` (RF07) |
+| GET    | /relatorios/estoque-pizza         | Pizzas por sabor e lote mais antigo com saldo (RF07)        |
+| GET    | /relatorios/vendas                | Totais de vendas, por status, sabor e mercado (RF07)        |
+| GET    | /relatorios/movimentacoes-materia-prima | Histórico de entradas/saídas de insumos (RF07)        |
 
 ### Exemplo: criar pedido
 
@@ -71,6 +75,78 @@ POST /pedido-revenda
 - Se faltar estoque de qualquer sabor, retorna 400 e nada é gravado.
 - Status: `Pendente` (inicial), `Em Produção`, `Entregue`, `Cancelado`. Pedidos `Entregue` ou `Cancelado` não mudam mais de status.
 - Ao cancelar, as quantidades voltam ao estoque como um novo lote com data de hoje.
+
+### Relatórios (RF07)
+
+Todos são somente leitura (GET). Datas no formato `AAAA-MM-DD`; `data_fim` é inclusiva
+(considera o dia inteiro). Filtros inválidos retornam 400.
+
+**`GET /relatorios/estoque-materia-prima?apenas_criticos=true`**
+
+```json
+{
+  "resumo": {"total_insumos": 3, "total_criticos": 2},
+  "insumos": [
+    {"id_materia_prima": 3, "nome": "Molho", "unidade_medida": "l",
+     "qtd_atual": 2.0, "qtd_minima": 2.0, "estoque_critico": true}
+  ]
+}
+```
+
+O `resumo` sempre considera todos os insumos, mesmo com o filtro.
+
+**`GET /relatorios/estoque-pizza`**
+
+```json
+{
+  "total_pizzas": 119,
+  "sabores": [
+    {"id_sabor": 1, "sabor": "Calabresa", "quantidade_disponivel": 86, "data_lote_mais_antigo": "2026-08-01"},
+    {"id_sabor": 3, "sabor": "Portuguesa", "quantidade_disponivel": 0, "data_lote_mais_antigo": null}
+  ]
+}
+```
+
+**`GET /relatorios/vendas`**
+
+Filtros opcionais: `?data_inicio=`, `?data_fim=`, `?id_mercado=`, `?status=`
+(ex.: `/relatorios/vendas?data_inicio=2026-09-01&data_fim=2026-09-30&id_mercado=1`).
+Os filtros valem para todos os blocos, inclusive `por_status`. Pedidos `Cancelado` não entram em `quantidade_pedidos`,
+`quantidade_pizzas`, `valor_total`, `por_sabor` e `por_mercado`; aparecem só em `por_status`.
+`por_sabor` e `por_mercado` vêm ordenados do maior para o menor valor.
+
+```json
+{
+  "quantidade_pedidos": 4,
+  "quantidade_pizzas": 21,
+  "valor_total": 490.0,
+  "por_status": {
+    "Pendente":    {"pedidos": 1, "valor": 150.0},
+    "Em Produção": {"pedidos": 1, "valor": 60.0},
+    "Entregue":    {"pedidos": 2, "valor": 280.0},
+    "Cancelado":   {"pedidos": 1, "valor": 110.0}
+  },
+  "por_sabor": [
+    {"id_sabor": 1, "sabor": "Calabresa", "quantidade": 14, "valor": 280.0},
+    {"id_sabor": 2, "sabor": "Frango", "quantidade": 7, "valor": 210.0}
+  ],
+  "por_mercado": [
+    {"id_mercado": 1, "mercado": "Mercado A", "pedidos": 2, "valor": 320.0},
+    {"id_mercado": 2, "mercado": "Mercado B", "pedidos": 2, "valor": 170.0}
+  ]
+}
+```
+
+**`GET /relatorios/movimentacoes-materia-prima?id_materia_prima=1&tipo=saida&data_inicio=2026-09-01&data_fim=2026-09-30`**
+
+Mais recentes primeiro. `tipo` aceita `entrada` ou `saida`.
+
+```json
+[
+  {"id_movimentacao": 2, "id_materia_prima": 1, "materia_prima": "Farinha", "unidade_medida": "kg",
+   "tipo": "saida", "quantidade": 5.0, "data_hora": "2026-09-15T23:59:00"}
+]
+```
 
 ## Estrutura
 

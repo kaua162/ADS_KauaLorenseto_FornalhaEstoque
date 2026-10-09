@@ -1,5 +1,5 @@
-from datetime import date
 from app.extensions import db
+from app.utils import hoje_brasilia
 
 
 class EstoquePizzaCongelada(db.Model):
@@ -8,7 +8,7 @@ class EstoquePizzaCongelada(db.Model):
     id_estoque_pizza = db.Column(db.Integer, primary_key=True)
     id_sabor = db.Column(db.Integer, db.ForeignKey("pizza_sabor.id_sabor"), nullable=False)
     quantidade_disponivel = db.Column(db.Integer, nullable=False, default=0)
-    data_producao = db.Column(db.Date, default=date.today)
+    data_producao = db.Column(db.Date, default=hoje_brasilia)
 
     sabor = db.relationship("PizzaSabor", backref="estoques")
 
