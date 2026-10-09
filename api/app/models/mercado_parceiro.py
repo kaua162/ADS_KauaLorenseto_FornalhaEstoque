@@ -9,3 +9,12 @@ class MercadoParceiro(db.Model):
     cnpj_cpf = db.Column(db.String(20), unique=True, nullable=False)
     telefone = db.Column(db.String(20))
     endereco = db.Column(db.String(255))
+
+    def to_dict(self):
+        return {
+            "id_mercado": self.id_mercado,
+            "nome": self.nome,
+            "cnpj_cpf": self.cnpj_cpf,
+            "telefone": self.telefone,
+            "endereco": self.endereco,
+        }

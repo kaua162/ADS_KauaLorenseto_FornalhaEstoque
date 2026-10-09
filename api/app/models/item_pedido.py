@@ -12,3 +12,13 @@ class ItemPedido(db.Model):
 
     pedido = db.relationship("PedidoRevenda", backref="itens")
     sabor = db.relationship("PizzaSabor")
+
+    def to_dict(self):
+        return {
+            "id_item_pedido": self.id_item_pedido,
+            "id_sabor": self.id_sabor,
+            "sabor": self.sabor.nome if self.sabor else None,
+            "quantidade": self.quantidade,
+            "valor_unitario": float(self.valor_unitario),
+            "subtotal": float(self.valor_unitario * self.quantidade),
+        }

@@ -6,6 +6,7 @@ from sqlalchemy import func
 from app.extensions import db
 from app.models.pizza_sabor import PizzaSabor
 from app.models.estoque_pizza import EstoquePizzaCongelada
+from app.services.estoque_pizza import dar_baixa_fifo, EstoqueInsuficiente
 
 estoque_pizza_bp = Blueprint("estoque_pizza", __name__)
 
@@ -80,24 +81,11 @@ def registrar_baixa():
     PizzaSabor.query.get_or_404(id_sabor)
     quantidade = int(quantidade)
 
-    lotes = (
-        EstoquePizzaCongelada.query
-        .filter(EstoquePizzaCongelada.id_sabor == id_sabor, EstoquePizzaCongelada.quantidade_disponivel > 0)
-        .order_by(EstoquePizzaCongelada.data_producao, EstoquePizzaCongelada.id_estoque_pizza)
-        .all()
-    )
-
-    if quantidade > sum(l.quantidade_disponivel for l in lotes):
+    try:
+        saldo = dar_baixa_fifo(id_sabor, quantidade)
+    except EstoqueInsuficiente:
+        db.session.rollback()
         return jsonify({"erro": "Quantidade de baixa maior que o estoque disponível."}), 400
 
-    restante = quantidade
-    for lote in lotes:
-        if restante == 0:
-            break
-        consumido = min(lote.quantidade_disponivel, restante)
-        lote.quantidade_disponivel -= consumido
-        restante -= consumido
-
     db.session.commit()
-    saldo = sum(l.quantidade_disponivel for l in lotes)
     return jsonify({"id_sabor": id_sabor, "quantidade_baixada": quantidade, "quantidade_disponivel": saldo}), 200
