@@ -55,8 +55,12 @@ def atualizar(id_materia_prima):
 
 @materia_prima_bp.delete("/<int:id_materia_prima>")
 def remover(id_materia_prima):
-    """RF02 - remove um insumo do cadastro"""
+    """RF02 - remove um insumo do cadastro (somente se não tiver movimentações registradas)"""
     item = MateriaPrima.query.get_or_404(id_materia_prima)
+
+    if MovimentacaoEstoque.query.filter_by(id_materia_prima=id_materia_prima).first():
+        return jsonify({"erro": "Insumo possui movimentações registradas e não pode ser removido."}), 409
+
     db.session.delete(item)
     db.session.commit()
     return jsonify({"mensagem": "Insumo removido."}), 200

@@ -26,6 +26,27 @@ flask --app run.py run --debug
 
 A API sobe em `http://127.0.0.1:5000`.
 
+## Migrações do banco
+
+O `db.create_all()` cria tabelas novas, mas **não adiciona colunas** em tabelas que já existem.
+Quando um model ganha campos, há um script em [`migracoes/`](migracoes/) para rodar uma vez no banco:
+
+| Arquivo | O que faz |
+|---|---|
+| `2026-10-13_mercado_endereco.sql` | Contato, e-mail, endereço completo e observações em `mercado_parceiro` |
+
+No pgAdmin: selecione o banco `fornalha_estoque` → **Tools > Query Tool** → abra o arquivo
+(ícone de pasta) → **F5**. Os scripts usam `IF NOT EXISTS`, então podem ser rodados de novo sem problema.
+
+## Testes
+
+```bash
+cd api
+python -m unittest discover -s tests -t .
+```
+
+Os testes usam SQLite em memória (não tocam no PostgreSQL).
+
 ## Endpoints implementados
 
 | Método | Rota                              | Descrição                                                   |
@@ -34,7 +55,7 @@ A API sobe em `http://127.0.0.1:5000`.
 | GET    | /materia-prima                    | Lista matéria-prima (RF02)                                  |
 | POST   | /materia-prima                    | Cadastra matéria-prima (RF02)                               |
 | PUT    | /materia-prima/<id>               | Atualiza matéria-prima (RF02)                               |
-| DELETE | /materia-prima/<id>               | Remove matéria-prima (RF02)                                 |
+| DELETE | /materia-prima/<id>               | Remove matéria-prima sem movimentações (RF02)               |
 | POST   | /materia-prima/<id>/movimentacao  | Entrada/saída de insumo (RF03)                              |
 | GET    | /pizza-sabor                      | Lista sabores de pizza (RF05)                               |
 | POST   | /pizza-sabor                      | Cadastra sabor (RF05)                                       |
@@ -44,9 +65,10 @@ A API sobe em `http://127.0.0.1:5000`.
 | GET    | /estoque-pizza/resumo             | Saldo total por sabor (RF05)                                |
 | POST   | /estoque-pizza/producao           | Registra lote produzido (RF05)                              |
 | POST   | /estoque-pizza/baixa              | Baixa de estoque, lotes mais antigos primeiro (RF05)        |
-| GET    | /mercado-parceiro                 | Lista mercados parceiros (RF06 - HU07)                      |
-| POST   | /mercado-parceiro                 | Cadastra mercado; `cnpj_cpf` obrigatório e único (RF06 - HU07) |
-| PUT    | /mercado-parceiro/<id>            | Atualiza mercado (RF06 - HU07)                              |
+| GET    | /mercado-parceiro                 | Lista mercados parceiros com todos os campos (RF06 - HU07)  |
+| GET    | /mercado-parceiro/<id>            | Detalha um mercado (RF06 - HU07)                            |
+| POST   | /mercado-parceiro                 | Cadastra mercado; `nome` e `cnpj_cpf` obrigatórios (RF06 - HU07) |
+| PUT    | /mercado-parceiro/<id>            | Atualiza só os campos enviados (RF06 - HU07)                |
 | DELETE | /mercado-parceiro/<id>            | Remove mercado sem pedidos vinculados (RF06 - HU07)         |
 | GET    | /pedido-revenda                   | Lista pedidos, filtros `?status=` e `?id_mercado=` (RF06 - HU08) |
 | GET    | /pedido-revenda/<id>              | Detalha pedido com itens (RF06 - HU08)                      |
@@ -56,6 +78,41 @@ A API sobe em `http://127.0.0.1:5000`.
 | GET    | /relatorios/estoque-pizza         | Pizzas por sabor e lote mais antigo com saldo (RF07)        |
 | GET    | /relatorios/vendas                | Totais de vendas, por status, sabor e mercado (RF07)        |
 | GET    | /relatorios/movimentacoes-materia-prima | Histórico de entradas/saídas de insumos (RF07)        |
+
+### Mercado parceiro: campos
+
+```json
+POST /mercado-parceiro
+{
+  "nome": "Mercado Central",
+  "cnpj_cpf": "12.345.678/0001-90",
+  "telefone": "(54) 3311-0000",
+  "email": "compras@mercadocentral.com.br",
+  "nome_contato": "Ana Souza",
+  "logradouro": "Rua Independência",
+  "numero": "1200",
+  "bairro": "Centro",
+  "cidade": "Passo Fundo",
+  "uf": "RS",
+  "cep": "99010-040",
+  "observacoes": "Entregas só pela manhã."
+}
+```
+
+| Campo | Regra |
+|---|---|
+| `nome` | Obrigatório, até 150 caracteres |
+| `cnpj_cpf` | Obrigatório e único; guardado só com dígitos (11 = CPF, 14 = CNPJ) |
+| `telefone` | Opcional; guardado só com dígitos, DDD + número (10 ou 11) |
+| `email` | Opcional; formato `nome@dominio.ext`, guardado em minúsculas |
+| `uf` | Opcional; sigla de um dos 27 estados, guardada em maiúsculas |
+| `cep` | Opcional; guardado só com dígitos (8) |
+| `nome_contato`, `logradouro`, `numero`, `bairro`, `cidade`, `observacoes` | Opcionais, texto |
+| `endereco` | Campo antigo (texto livre), mantido para não perder dados; a migração copia para `logradouro` |
+
+Campos opcionais enviados vazios (`""`) ou `null` são gravados como `null`. No `PUT`, campos
+ausentes do corpo não são alterados. Validação inválida retorna 400 com `{"erro": "..."}`;
+CNPJ/CPF de outro mercado retorna 409.
 
 ### Exemplo: criar pedido
 
@@ -73,6 +130,7 @@ POST /pedido-revenda
 
 - O `valor_unitario` de cada item é o `preco_unitario` do sabor no momento do pedido; o `valor_total` é a soma dos itens.
 - Se faltar estoque de qualquer sabor, retorna 400 e nada é gravado.
+- A listagem `GET /pedido-revenda` traz `quantidade_pizzas` (soma dos itens) em cada pedido; os itens completos vêm em `GET /pedido-revenda/<id>`.
 - Status: `Pendente` (inicial), `Em Produção`, `Entregue`, `Cancelado`. Pedidos `Entregue` ou `Cancelado` não mudam mais de status.
 - Ao cancelar, as quantidades voltam ao estoque como um novo lote com data de hoje.
 
@@ -158,6 +216,8 @@ api/
 │   ├── models/           # modelos SQLAlchemy (um por entidade do DER)
 │   ├── routes/           # blueprints por módulo
 │   └── services/         # regras compartilhadas entre rotas (ex.: baixa FIFO de estoque)
+├── migracoes/            # scripts SQL para colunas novas em tabelas existentes
+├── tests/                # testes (unittest + SQLite em memória)
 ├── requirements.txt
 ├── .env.example
 └── run.py

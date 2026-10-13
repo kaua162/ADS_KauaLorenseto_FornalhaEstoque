@@ -27,6 +27,7 @@ class PedidoRevenda(db.Model):
             "data_pedido": self.data_pedido.isoformat() if self.data_pedido else None,
             "status": self.status,
             "valor_total": float(self.valor_total or 0),
+            "quantidade_pizzas": sum(i.quantidade for i in self.itens),
         }
         if incluir_itens:
             dados["itens"] = [i.to_dict() for i in self.itens]
