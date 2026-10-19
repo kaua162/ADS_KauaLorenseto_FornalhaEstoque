@@ -18,13 +18,30 @@ Crie o banco no PostgreSQL (ex.: via pgAdmin ou psql):
 CREATE DATABASE fornalha_estoque;
 ```
 
+### Banco de dados (`.env`)
+
+A conexão usa o driver **pg8000** (Python puro, sem compilação; funciona bem no Windows).
+A URL de conexão fica na variável `DATABASE_URL` do arquivo `.env`, no formato:
+
+```
+DATABASE_URL=postgresql+pg8000://USUARIO:SENHA@localhost:5432/fornalha_estoque
+```
+
+Troque `USUARIO` e `SENHA` pelos dados do seu PostgreSQL local. O `.env` não vai para o
+repositório (está no `.gitignore`); o modelo é o [`.env.example`](.env.example).
+
 ## Rodando
 
 ```bash
-flask --app run.py run --debug
+cd api
+.venv\Scripts\activate          # Linux/macOS: source .venv/bin/activate
+python run.py
 ```
 
-A API sobe em `http://127.0.0.1:5000`.
+A API sobe em `http://127.0.0.1:5000` (modo debug, recarrega ao salvar arquivos).
+
+> Use `python run.py` em vez de `flask run`: com acento no nome do usuário do Windows
+> (ex.: `C:\Users\Kauã`) o `flask run` pode falhar.
 
 ## Migrações do banco
 
@@ -49,35 +66,42 @@ Os testes usam SQLite em memória (não tocam no PostgreSQL).
 
 ## Endpoints implementados
 
-| Método | Rota                              | Descrição                                                   |
-|--------|-----------------------------------|-------------------------------------------------------------|
-| POST   | /auth/login                       | Autentica usuário (RF01)                                    |
-| GET    | /materia-prima                    | Lista matéria-prima (RF02)                                  |
-| POST   | /materia-prima                    | Cadastra matéria-prima (RF02)                               |
-| PUT    | /materia-prima/<id>               | Atualiza matéria-prima (RF02)                               |
-| DELETE | /materia-prima/<id>               | Remove matéria-prima sem movimentações (RF02)               |
-| POST   | /materia-prima/<id>/movimentacao  | Entrada/saída de insumo (RF03)                              |
-| GET    | /pizza-sabor                      | Lista sabores de pizza (RF05)                               |
-| POST   | /pizza-sabor                      | Cadastra sabor (RF05)                                       |
-| PUT    | /pizza-sabor/<id>                 | Atualiza sabor (RF05)                                       |
-| DELETE | /pizza-sabor/<id>                 | Remove sabor sem estoque/pedidos vinculados (RF05)          |
-| GET    | /estoque-pizza                    | Lista lotes com saldo, filtro `?id_sabor=` (RF05)           |
-| GET    | /estoque-pizza/resumo             | Saldo total por sabor (RF05)                                |
-| POST   | /estoque-pizza/producao           | Registra lote produzido (RF05)                              |
-| POST   | /estoque-pizza/baixa              | Baixa de estoque, lotes mais antigos primeiro (RF05)        |
-| GET    | /mercado-parceiro                 | Lista mercados parceiros com todos os campos (RF06 - HU07)  |
-| GET    | /mercado-parceiro/<id>            | Detalha um mercado (RF06 - HU07)                            |
-| POST   | /mercado-parceiro                 | Cadastra mercado; `nome` e `cnpj_cpf` obrigatórios (RF06 - HU07) |
-| PUT    | /mercado-parceiro/<id>            | Atualiza só os campos enviados (RF06 - HU07)                |
-| DELETE | /mercado-parceiro/<id>            | Remove mercado sem pedidos vinculados (RF06 - HU07)         |
-| GET    | /pedido-revenda                   | Lista pedidos, filtros `?status=` e `?id_mercado=` (RF06 - HU08) |
-| GET    | /pedido-revenda/<id>              | Detalha pedido com itens (RF06 - HU08)                      |
-| POST   | /pedido-revenda                   | Cria pedido e dá baixa no estoque, tudo ou nada (RF06 - HU08) |
-| PUT    | /pedido-revenda/<id>/status       | Atualiza status; cancelar devolve ao estoque (RF06 - HU08)  |
-| GET    | /relatorios/estoque-materia-prima | Estoque de insumos com resumo; filtro `?apenas_criticos=true` (RF07) |
-| GET    | /relatorios/estoque-pizza         | Pizzas por sabor e lote mais antigo com saldo (RF07)        |
-| GET    | /relatorios/vendas                | Totais de vendas, por status, sabor e mercado (RF07)        |
-| GET    | /relatorios/movimentacoes-materia-prima | Histórico de entradas/saídas de insumos (RF07)        |
+Lista completa, conforme `app/routes/*.py` e os prefixos registrados em `app/__init__.py`.
+A coluna "Requisito" segue a numeração do DVP (as docstrings do código usam uma numeração anterior).
+
+| Método | Rota | Descrição | Requisito |
+|--------|------|-----------|-----------|
+| GET    | / | Verificação de saúde da API (`{"status": "ok"}`) | — |
+| POST   | /auth/login | Autentica usuário | RF01 (HU01, HU02) |
+| POST   | /auth/registrar | Cria usuário (auxiliar, uso interno/dev) | RF01 |
+| GET    | /materia-prima | Lista insumos, com indicador de estoque crítico | RF02, RF03 |
+| POST   | /materia-prima | Cadastra insumo | RF02 (HU03) |
+| PUT    | /materia-prima/<id> | Atualiza nome, unidade e mínimo | RF02 |
+| DELETE | /materia-prima/<id> | Remove insumo sem movimentações | RF02 |
+| POST   | /materia-prima/<id>/movimentacao | Entrada/saída de insumo | RF03 (HU04) |
+| GET    | /pizza-sabor | Lista sabores | RF04 |
+| POST   | /pizza-sabor | Cadastra sabor | RF04 (HU05) |
+| PUT    | /pizza-sabor/<id> | Atualiza sabor | RF04 |
+| DELETE | /pizza-sabor/<id> | Remove sabor sem estoque/pedidos vinculados | RF04 |
+| GET    | /estoque-pizza | Lista lotes com saldo, filtro `?id_sabor=` | RF05 |
+| GET    | /estoque-pizza/resumo | Saldo total por sabor e lote mais antigo | RF05 |
+| POST   | /estoque-pizza/producao | Registra lote produzido | RF05 (HU06) |
+| POST   | /estoque-pizza/baixa | Baixa de estoque, lotes mais antigos primeiro | RF05 (HU06) |
+| GET    | /mercado-parceiro | Lista mercados parceiros com todos os campos | RF06 |
+| GET    | /mercado-parceiro/<id> | Detalha um mercado | RF06 |
+| POST   | /mercado-parceiro | Cadastra mercado; `nome` e `cnpj_cpf` obrigatórios | RF06 (HU07) |
+| PUT    | /mercado-parceiro/<id> | Atualiza só os campos enviados | RF06 |
+| DELETE | /mercado-parceiro/<id> | Remove mercado sem pedidos vinculados | RF06 |
+| GET    | /pedido-revenda | Lista pedidos, filtros `?status=` e `?id_mercado=` | RF07 |
+| GET    | /pedido-revenda/<id> | Detalha pedido com itens | RF07 |
+| POST   | /pedido-revenda | Cria pedido e dá baixa no estoque, tudo ou nada | RF07 (HU08) |
+| PUT    | /pedido-revenda/<id>/status | Atualiza status; cancelar devolve ao estoque | RF07 |
+| GET    | /relatorios/estoque-materia-prima | Estoque de insumos com resumo; filtro `?apenas_criticos=true` | Relatórios |
+| GET    | /relatorios/estoque-pizza | Pizzas por sabor e lote mais antigo com saldo | Relatórios |
+| GET    | /relatorios/vendas | Totais de vendas, por status, sabor e mercado | Relatórios |
+| GET    | /relatorios/movimentacoes-materia-prima | Histórico de entradas/saídas de insumos | Relatórios |
+
+Erros de validação e de regra de negócio retornam JSON no formato `{"erro": "mensagem"}`.
 
 ### Mercado parceiro: campos
 
@@ -134,7 +158,7 @@ POST /pedido-revenda
 - Status: `Pendente` (inicial), `Em Produção`, `Entregue`, `Cancelado`. Pedidos `Entregue` ou `Cancelado` não mudam mais de status.
 - Ao cancelar, as quantidades voltam ao estoque como um novo lote com data de hoje.
 
-### Relatórios (RF07)
+### Relatórios
 
 Todos são somente leitura (GET). Datas no formato `AAAA-MM-DD`; `data_fim` é inclusiva
 (considera o dia inteiro). Filtros inválidos retornam 400.
