@@ -21,6 +21,8 @@ Projeto acadêmico — Curso de Análise e Desenvolvimento de Sistemas (ADS) —
 
 O Documento de Visão do Produto (DVP) está disponível em [`docs/DVP.docx`](docs/DVP.docx).
 
+O progresso semanal do desenvolvimento está no [diário de desenvolvimento](docs/DIARIO.md).
+
 ## Arquitetura
 
 Arquitetura cliente-servidor em três camadas:
