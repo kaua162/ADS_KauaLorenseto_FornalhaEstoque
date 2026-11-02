@@ -52,6 +52,12 @@ Instalação do Git, do Python e do Flutter 3.47.7, clone do repositório e inst
 dependências da API (`pip install -r requirements.txt`). Foi preciso atualizar o Flutter, porque
 o app exige Dart 3.13.5 (`sdk: ^3.13.5` no `pubspec.yaml`), versão que vem com o Flutter 3.47.7.
 
+**01/11 — Revisão semanal**
+Estado do projeto, conferido no histórico do Git: API com RF01 a RF07 do DVP implementados (além
+dos relatórios); app Flutter com login, insumos, pizzas, pedidos, mercados e relatórios; e
+documentação atualizada (README, endpoints da API e este diário). Nesta semana não houve
+alterações de código, só a criação do diário.
+
 ### Próximos passos
 
 - **Abrir o app no iPhone:** acessar a versão web pelo Safari, com o iPhone na mesma rede Wi-Fi
@@ -60,3 +66,5 @@ o app exige Dart 3.13.5 (`sdk: ^3.13.5` no `pubspec.yaml`), versão que vem com 
 - **Hospedar a API e o banco:** colocar a API Flask e o PostgreSQL num servidor, para o app
   funcionar fora da rede local.
 - **Atualizar o DVP:** incluir o driver pg8000 na tabela de ferramentas.
+- **Trocar a senha de teste do usuário antes do uso real.**
+- **Apagar os dados de teste do banco antes de usar na pizzaria.**
