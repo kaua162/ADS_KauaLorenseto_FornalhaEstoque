@@ -68,3 +68,9 @@ alterações de código, só a criação do diário.
 - **Atualizar o DVP:** incluir o driver pg8000 na tabela de ferramentas.
 - **Trocar a senha de teste do usuário antes do uso real.**
 - **Apagar os dados de teste do banco antes de usar na pizzaria.**
+
+## Semana de 23/11 a 29/11/2026
+
+**23/11 — Correção das validações da API**
+Correção das validações da API: quantidades de matéria-prima maiores que zero, quantidade mínima e
+inicial não negativas, preço do sabor maior que zero; testes automatizados adicionados.

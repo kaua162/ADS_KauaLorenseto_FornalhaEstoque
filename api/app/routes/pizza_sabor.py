@@ -4,8 +4,19 @@ from app.extensions import db
 from app.models.pizza_sabor import PizzaSabor
 from app.models.estoque_pizza import EstoquePizzaCongelada
 from app.models.item_pedido import ItemPedido
+from app.services.validacao import ler_numero
 
 pizza_sabor_bp = Blueprint("pizza_sabor", __name__)
+
+
+def _validar_preco(valor):
+    """Devolve (preco, None) ou (None, resposta de erro 400). O preço precisa ser maior que zero."""
+    preco = ler_numero(valor)
+    if preco is None:
+        return None, (jsonify({"erro": "preco_unitario deve ser um número maior que zero."}), 400)
+    if preco <= 0:
+        return None, (jsonify({"erro": "preco_unitario deve ser maior que zero."}), 400)
+    return preco, None
 
 
 @pizza_sabor_bp.get("")
@@ -25,8 +36,9 @@ def cadastrar():
     if not nome or preco is None:
         return jsonify({"erro": "Informe nome e preco_unitario."}), 400
 
-    if float(preco) < 0:
-        return jsonify({"erro": "preco_unitario não pode ser negativo."}), 400
+    preco, erro = _validar_preco(preco)
+    if erro:
+        return erro
 
     if PizzaSabor.query.filter_by(nome=nome).first():
         return jsonify({"erro": "Já existe um sabor com esse nome."}), 409
@@ -47,13 +59,14 @@ def atualizar(id_sabor):
     if nome != sabor.nome and PizzaSabor.query.filter_by(nome=nome).first():
         return jsonify({"erro": "Já existe um sabor com esse nome."}), 409
 
-    preco = dados.get("preco_unitario", sabor.preco_unitario)
-    if float(preco) < 0:
-        return jsonify({"erro": "preco_unitario não pode ser negativo."}), 400
+    if "preco_unitario" in dados:
+        preco, erro = _validar_preco(dados["preco_unitario"])
+        if erro:
+            return erro
+        sabor.preco_unitario = preco
 
     sabor.nome = nome
     sabor.descricao = dados.get("descricao", sabor.descricao)
-    sabor.preco_unitario = preco
 
     db.session.commit()
     return jsonify(sabor.to_dict()), 200

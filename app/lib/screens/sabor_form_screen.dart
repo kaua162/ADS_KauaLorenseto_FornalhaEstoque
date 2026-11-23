@@ -117,7 +117,7 @@ class _SaborFormScreenState extends State<SaborFormScreen> {
           validator: (v) {
             final n = lerNumero(v ?? '');
             if (n == null) return 'Informe o preço';
-            if (n < 0) return 'O preço não pode ser negativo';
+            if (n <= 0) return 'O preço deve ser maior que zero';
             return null;
           },
         ),
